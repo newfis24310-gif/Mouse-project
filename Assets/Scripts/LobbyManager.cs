@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
 using Unity.Services.Lobbies;
@@ -69,19 +70,31 @@ public class LobbyManager : MonoBehaviour {
 
     public async void Authenticate(string playerName) {
         this.playerName = playerName;
+        
         InitializationOptions initializationOptions = new InitializationOptions();
-        initializationOptions.SetProfile(playerName);
+        
+        string profileName = Regex.Replace(playerName, @"[^a-zA-Z0-9_-]", "_");
+
+        initializationOptions.SetProfile(profileName);
 
         await UnityServices.InitializeAsync(initializationOptions);
 
-        AuthenticationService.Instance.SignedIn += () => {
-            // do nothing
-            Debug.Log("Signed in! " + AuthenticationService.Instance.PlayerId);
+        if(!AuthenticationService.Instance.IsSignedIn) {
+            AuthenticationService.Instance.SignedIn += () => {
+                // do nothing
+                Debug.Log("Signed in! " + AuthenticationService.Instance.PlayerId);
+
+                RefreshLobbyList();
+            };
+
+            await AuthenticationService.Instance.SignInAnonymouslyAsync();
+        }
+        else
+        {
+            Debug.Log("Already signed in! " + AuthenticationService.Instance.PlayerId);
 
             RefreshLobbyList();
-        };
-
-        await AuthenticationService.Instance.SignInAnonymouslyAsync();
+        }
     }
 
     private void HandleRefreshLobbyList() {
